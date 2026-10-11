@@ -1,4 +1,4 @@
-name: Build APK
+name: Build Mini Battle APK
 
 on:
   workflow_dispatch:
@@ -7,42 +7,44 @@ on:
       - main
 
 jobs:
-  apk:
+  build-apk:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Download source
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Install Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
       - name: Install Capacitor
         run: |
-          npm install
-          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npm install -g @capacitor/cli
 
-      - name: Create Android App
+      - name: Create Android project
         run: |
-          npx cap add android || true
+          mkdir app
+          mv index.html app/ || true
+          mv *.js app/ || true
+          mv *.css app/ || true
+          cd app
+          npm init -y
+          npm install @capacitor/core @capacitor/android
+          npx cap init "Mini Battle" "com.minibattle.game" --web-dir .
+          npx cap add android
           npx cap sync android
 
       - name: Build APK
         run: |
-          cd android
+          cd app/android
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Upload APK
+      - name: Get APK
         uses: actions/upload-artifact@v4
         with:
-          name: mini-battle-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: Mini-Battle-APK
+          path: app/android/app/build/outputs/apk/debug/app-debug.apk
