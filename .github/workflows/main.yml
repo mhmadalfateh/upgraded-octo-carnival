@@ -7,12 +7,14 @@ on:
       - main
 
 jobs:
-  apk:
+  build-apk:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+
+      - name: Checkout project
         uses: actions/checkout@v4
+
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -20,37 +22,53 @@ jobs:
           distribution: temurin
           java-version: 17
 
+
       - name: Install Capacitor
         run: |
           npm install -g @capacitor/cli
 
-      - name: Find Game Files
-        run: |
-          find . -maxdepth 3 -type f | head -50
 
-      - name: Setup App
+      - name: Prepare Android project
         run: |
           rm -rf buildapp
+
           mkdir buildapp
 
-          cp -r . buildapp/game
+          rsync -av \
+            --exclude=.git \
+            --exclude=buildapp \
+            ./ buildapp/game/
+
 
           cd buildapp
 
           npm init -y
+
           npm install @capacitor/core @capacitor/android
 
-          npx cap init "Mini Battle" "com.minibattle.game" --web-dir game
+
+          npx cap init \
+          "Mini Battle" \
+          "com.minibattle.game" \
+          --web-dir game
+
 
           npx cap add android
 
+
           npx cap copy
+
+
 
       - name: Build APK
         run: |
           cd buildapp/android
+
           chmod +x gradlew
+
           ./gradlew assembleDebug
+
+
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
