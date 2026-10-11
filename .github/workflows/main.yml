@@ -7,44 +7,43 @@ on:
       - main
 
 jobs:
-  build-apk:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download source
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Java
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
-      - name: Install Capacitor
+      - name: Install tools
         run: |
           npm install -g @capacitor/cli
 
-      - name: Create Android project
+      - name: Prepare Web App
         run: |
-          mkdir app
-          mv index.html app/ || true
-          mv *.js app/ || true
-          mv *.css app/ || true
-          cd app
+          mkdir www
+          cp -r ./* www/ || true
+          cd www
           npm init -y
           npm install @capacitor/core @capacitor/android
-          npx cap init "Mini Battle" "com.minibattle.game" --web-dir .
+          npx cap init "Mini Battle" "com.minibattle.game" --web-dir www
+          mkdir -p android
           npx cap add android
-          npx cap sync android
+          npx cap copy
 
       - name: Build APK
         run: |
-          cd app/android
+          cd www/android
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      - name: Get APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Mini-Battle-APK
-          path: app/android/app/build/outputs/apk/debug/app-debug.apk
+          path: www/android/app/build/outputs/apk/debug/app-debug.apk
