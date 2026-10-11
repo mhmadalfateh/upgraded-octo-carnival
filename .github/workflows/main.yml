@@ -8,70 +8,86 @@ on:
 
 jobs:
   build-apk:
+
     runs-on: ubuntu-latest
 
     steps:
 
-      - name: Checkout project
+      - name: Checkout
         uses: actions/checkout@v4
 
 
-      - name: Setup Java
+      - name: Install Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
 
-      - name: Install Capacitor
+      - name: Install tools
         run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip rsync
           npm install -g @capacitor/cli
 
 
-      - name: Prepare Android project
+      - name: Extract game
         run: |
-          rm -rf buildapp
+          mkdir game
 
-          mkdir buildapp
+          unzip -o *.zip -d game
 
-          rsync -av \
-            --exclude=.git \
-            --exclude=buildapp \
-            ./ buildapp/game/
+          echo "Files:"
+          find game -maxdepth 3 -type f | head -50
 
 
-          cd buildapp
+      - name: Find index.html
+        run: |
+          INDEX=$(find game -name index.html | head -1)
+
+          if [ -z "$INDEX" ]; then
+            echo "index.html not found"
+            exit 1
+          fi
+
+          DIR=$(dirname "$INDEX")
+
+          echo "WEB_DIR=$DIR" >> $GITHUB_ENV
+
+
+      - name: Create Android project
+        run: |
+          mkdir app
+
+          rsync -av "$WEB_DIR"/ app/
+
+          cd app
 
           npm init -y
 
           npm install @capacitor/core @capacitor/android
 
-
           npx cap init \
           "Mini Battle" \
           "com.minibattle.game" \
-          --web-dir game
-
+          --web-dir .
 
           npx cap add android
-
 
           npx cap copy
 
 
-
       - name: Build APK
         run: |
-          cd buildapp/android
+          cd app/android
 
           chmod +x gradlew
 
           ./gradlew assembleDebug
 
 
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Mini-Battle-APK
-          path: buildapp/android/app/build/outputs/apk/debug/app-debug.apk
+          path: app/android/app/build/outputs/apk/debug/app-debug.apk
